@@ -99,13 +99,6 @@ func (h *Handler) CreateRecipe(c *fiber.Ctx) error {
 	}
 
 	fmt.Printf("User ID: %s\n", userIDStr)
-	// Parse user ID to UUID
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid user ID format",
-		})
-	}
 
 	var req models.CreateRecipeRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -132,7 +125,7 @@ func (h *Handler) CreateRecipe(c *fiber.Ctx) error {
 	// Create context with token
 	ctx := context.WithValue(c.Context(), "token", token)
 
-	recipe, err := h.recipeService.CreateRecipe(ctx, req, userID.String())
+	recipe, err := h.recipeService.CreateRecipeWithRelations(ctx, req, userIDStr)
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),

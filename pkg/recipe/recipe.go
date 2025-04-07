@@ -315,3 +315,182 @@ func (s *RecipeService) CommentOnRecipe(ctx context.Context, recipeID uuid.UUID,
 
 	return s.client.Mutate(ctx, &mutation, variables)
 }
+
+// CreateRecipeWithRelations creates a recipe along with its related data (ingredients, steps, images)
+func (s *RecipeService) CreateRecipeWithRelations(ctx context.Context, req models.CreateRecipeRequest, userID string) (*models.Recipe, error) {
+	// Get token from context
+	token, ok := ctx.Value("token").(string)
+	if !ok {
+		return nil, errors.New("no token found in context")
+	}
+
+	// Use client with token
+	client := s.withToken(token)
+
+	// Create recipe mutation
+	var mutation struct {
+		InsertRecipes struct {
+			AffectedRows int `graphql:"affected_rows"`
+		} `graphql:"insert_recipes(objects: [{title: $title, description: $description, preparation_time: $preparation_time, category_id: $category_id, user_id: $user_id, featured_image: $featured_image, price: $price}])"`
+	}
+
+	mutationVars := map[string]interface{}{
+		"title":            req.Title,
+		"description":      req.Description,
+		"preparation_time": req.PreparationTime,
+		"category_id":      req.CategoryID,
+		"user_id":          userID,
+		"featured_image":   req.FeaturedImage,
+		"price":            req.Price,
+	}
+
+	err := client.Mutate(ctx, &mutation, mutationVars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create recipe: %v", err)
+	}
+
+	if mutation.InsertRecipes.AffectedRows == 0 {
+		return nil, fmt.Errorf("no recipe was created")
+	}
+
+	// Query the created recipe
+	var query struct {
+		Recipes []struct {
+			ID              string  `graphql:"id"`
+			Title           string  `graphql:"title"`
+			Description     string  `graphql:"description"`
+			PreparationTime int     `graphql:"preparation_time"`
+			CategoryID      string  `graphql:"category_id"`
+			UserID          string  `graphql:"user_id"`
+			FeaturedImage   string  `graphql:"featured_image"`
+			Price           float64 `graphql:"price"`
+		} `graphql:"recipes(where: {title: {_eq: $title}, user_id: {_eq: $user_id}}, limit: 1, order_by: {created_at: desc})"`
+	}
+
+	queryVars := map[string]interface{}{
+		"title":   req.Title,
+		"user_id": userID,
+	}
+
+	err = client.Query(ctx, &query, queryVars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch created recipe: %v", err)
+	}
+
+	if len(query.Recipes) == 0 {
+		return nil, fmt.Errorf("created recipe not found")
+	}
+
+	recipe := query.Recipes[0]
+
+	// Insert recipe steps
+	if len(req.Steps) > 0 {
+		var stepsMutation struct {
+			InsertRecipeSteps struct {
+				AffectedRows int `graphql:"affected_rows"`
+			} `graphql:"insert_recipe_steps(objects: [{recipe_id: $recipe_id, step_number: $step_number, description: $description, image_url: $image_url}])"`
+		}
+
+		for _, step := range req.Steps {
+			stepVars := map[string]interface{}{
+				"recipe_id":   recipe.ID,
+				"step_number": step.StepNumber,
+				"description": step.Description,
+				"image_url":   step.ImageURL,
+			}
+
+			err = client.Mutate(ctx, &stepsMutation, stepVars)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create recipe step: %v", err)
+			}
+
+			if stepsMutation.InsertRecipeSteps.AffectedRows == 0 {
+				return nil, fmt.Errorf("no recipe step was created")
+			}
+		}
+	}
+
+	// Insert recipe ingredients
+	if len(req.Ingredients) > 0 {
+		// First ensure all ingredients exist
+		for _, ingredient := range req.Ingredients {
+			var ingredientMutation struct {
+				InsertIngredients struct {
+					AffectedRows int `graphql:"affected_rows"`
+				} `graphql:"insert_ingredients(objects: [{id: $id, name: $name}], on_conflict: {constraint: ingredients_pkey, update_columns: []})"`
+			}
+
+			ingredientVars := map[string]interface{}{
+				"id":   ingredient.IngredientID,
+				"name": ingredient.IngredientID, // Use the ID as the name if not provided
+			}
+
+			err = client.Mutate(ctx, &ingredientMutation, ingredientVars)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create/update ingredient: %v", err)
+			}
+		}
+
+		// Now create recipe ingredients
+		var ingredientsMutation struct {
+			InsertRecipeIngredients struct {
+				AffectedRows int `graphql:"affected_rows"`
+			} `graphql:"insert_recipe_ingredients(objects: [{recipe_id: $recipe_id, ingredient_id: $ingredient_id, quantity: $quantity, unit: $unit}])"`
+		}
+
+		for _, ingredient := range req.Ingredients {
+			ingredientVars := map[string]interface{}{
+				"recipe_id":     recipe.ID,
+				"ingredient_id": ingredient.IngredientID,
+				"quantity":      ingredient.Quantity,
+				"unit":          ingredient.Unit,
+			}
+
+			err = client.Mutate(ctx, &ingredientsMutation, ingredientVars)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create recipe ingredient: %v", err)
+			}
+
+			if ingredientsMutation.InsertRecipeIngredients.AffectedRows == 0 {
+				return nil, fmt.Errorf("no recipe ingredient was created")
+			}
+		}
+	}
+
+	// Insert recipe images
+	if len(req.Images) > 0 {
+		var imagesMutation struct {
+			InsertRecipeImages struct {
+				AffectedRows int `graphql:"affected_rows"`
+			} `graphql:"insert_recipe_images(objects: [{recipe_id: $recipe_id, image_url: $image_url, is_featured: $is_featured}])"`
+		}
+
+		for _, image := range req.Images {
+			imageVars := map[string]interface{}{
+				"recipe_id":   recipe.ID,
+				"image_url":   image.ImageURL,
+				"is_featured": image.IsFeatured,
+			}
+
+			err = client.Mutate(ctx, &imagesMutation, imageVars)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create recipe image: %v", err)
+			}
+
+			if imagesMutation.InsertRecipeImages.AffectedRows == 0 {
+				return nil, fmt.Errorf("no recipe image was created")
+			}
+		}
+	}
+
+	return &models.Recipe{
+		ID:              recipe.ID,
+		Title:           recipe.Title,
+		Description:     &recipe.Description,
+		PreparationTime: recipe.PreparationTime,
+		CategoryID:      &recipe.CategoryID,
+		UserID:          recipe.UserID,
+		FeaturedImage:   recipe.FeaturedImage,
+		Price:           recipe.Price,
+	}, nil
+}

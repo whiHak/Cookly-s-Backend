@@ -142,6 +142,7 @@ type CreateRecipeRequest struct {
 	Price           float64                 `json:"price"`
 	Steps           []Step                  `json:"steps"`
 	Ingredients     []RecipeIngredientInput `json:"ingredients"`
+	Images          []RecipeImageInput      `json:"images"`
 }
 
 type Step struct {
@@ -154,4 +155,9 @@ type RecipeIngredientInput struct {
 	IngredientID string `json:"ingredient_id"`
 	Quantity     string `json:"quantity"`
 	Unit         string `json:"unit"`
+}
+
+type RecipeImageInput struct {
+	ImageURL   string `json:"image_url"`
+	IsFeatured bool   `json:"is_featured"`
 }
