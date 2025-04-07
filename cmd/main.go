@@ -70,6 +70,7 @@ func main() {
 	// Recipe routes
 	recipes := api.Group("/recipes")
 	recipes.Post("/", h.CreateRecipe)
+	recipes.Get("/all", h.GetAllRecipes)
 	recipes.Get("/:id", h.GetRecipe)
 	recipes.Put("/:id", h.UpdateRecipe)
 	recipes.Delete("/:id", h.DeleteRecipe)

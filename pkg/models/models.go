@@ -27,16 +27,19 @@ type Category struct {
 }
 
 type Recipe struct {
-	ID              string    `json:"id"`
-	Title           string    `json:"title"`
-	Description     *string   `json:"description"`
-	PreparationTime int       `json:"preparation_time"`
-	CategoryID      *string   `json:"category_id"`
-	UserID          string    `json:"user_id"`
-	FeaturedImage   string    `json:"featured_image"`
-	Price           float64   `json:"price"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID              string             `json:"id"`
+	Title           string             `json:"title"`
+	Description     *string            `json:"description"`
+	PreparationTime int                `json:"preparation_time"`
+	CategoryID      *string            `json:"category_id"`
+	UserID          string             `json:"user_id"`
+	FeaturedImage   string             `json:"featured_image"`
+	Price           float64            `json:"price"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+	Steps           []RecipeStep       `json:"steps"`
+	Ingredients     []RecipeIngredient `json:"ingredients"`
+	Images          []RecipeImage      `json:"images"`
 }
 
 type RecipeImage struct {
@@ -134,21 +137,21 @@ type AuthResponse struct {
 }
 
 type CreateRecipeRequest struct {
-	Title           string                  `json:"title"`
-	Description     string                  `json:"description"`
-	PreparationTime int                     `json:"preparation_time"`
-	CategoryID      string                  `json:"category_id"`
-	FeaturedImage   string                  `json:"featured_image"`
-	Price           float64                 `json:"price"`
-	Steps           []Step                  `json:"steps"`
-	Ingredients     []RecipeIngredientInput `json:"ingredients"`
-	Images          []RecipeImageInput      `json:"images"`
+	Title           string             `json:"title"`
+	Description     string             `json:"description"`
+	PreparationTime int                `json:"preparation_time"`
+	CategoryID      string             `json:"category_id"`
+	FeaturedImage   string             `json:"featured_image"`
+	Price           float64            `json:"price"`
+	Steps           []Step             `json:"steps"`
+	Ingredients     []RecipeIngredient `json:"ingredients"`
+	Images          []RecipeImageInput `json:"images"`
 }
 
 type Step struct {
-	StepNumber  int    `json:"step_number"`
-	Description string `json:"description"`
-	ImageURL    string `json:"image_url"`
+	StepNumber  int     `json:"step_number"`
+	Description string  `json:"description"`
+	ImageBase64 *string `json:"image_base64,omitempty"`
 }
 
 type RecipeIngredientInput struct {
@@ -158,6 +161,6 @@ type RecipeIngredientInput struct {
 }
 
 type RecipeImageInput struct {
-	ImageURL   string `json:"image_url"`
-	IsFeatured bool   `json:"is_featured"`
+	ImageBase64 string `json:"image_base64"`
+	IsFeatured  bool   `json:"is_featured"`
 }

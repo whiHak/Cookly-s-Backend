@@ -585,3 +585,25 @@ func (h *Handler) UploadImage(c *fiber.Ctx) error {
 		"url": imageURL,
 	})
 }
+
+func (h *Handler) GetAllRecipes(c *fiber.Ctx) error {
+	// Get token from Authorization header
+	token := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
+	if token == "" {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+			"error": "No authorization token provided",
+		})
+	}
+
+	// Create context with token
+	ctx := context.WithValue(c.Context(), "token", token)
+
+	recipes, err := h.recipeService.GetAllRecipes(ctx)
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(recipes)
+}
