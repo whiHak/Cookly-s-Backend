@@ -200,8 +200,8 @@ func (s *RecipeService) CreateRecipeWithRelations(ctx context.Context, req model
 			}
 
 			ingredientVars := map[string]interface{}{
-				"id":   ingredient.IngredientID,
-				"name": ingredient.IngredientID, // Use the ID as the name if not provided
+				"id":   graphql.String(ingredient.IngredientID.String()),
+				"name": graphql.String(ingredient.IngredientID.String()), // Use the ID as the name if not provided
 			}
 
 			err = client.Mutate(ctx, &ingredientMutation, ingredientVars)
@@ -220,7 +220,7 @@ func (s *RecipeService) CreateRecipeWithRelations(ctx context.Context, req model
 		for _, ingredient := range req.Ingredients {
 			ingredientVars := map[string]interface{}{
 				"recipe_id":     recipe.ID,
-				"ingredient_id": ingredient.IngredientID,
+				"ingredient_id": graphql.String(ingredient.IngredientID.String()),
 				"quantity":      ingredient.Quantity,
 				"unit":          ingredient.Unit,
 			}
@@ -517,7 +517,16 @@ func (s *RecipeService) CreateRecipe(ctx context.Context, req models.CreateRecip
 }
 
 func (s *RecipeService) GetRecipeByID(ctx context.Context, recipeID string) (*models.Recipe, error) {
-	var query struct {
+	token, ok := ctx.Value("token").(string)
+	if !ok || token == "" {
+		return nil, errors.New("no authorization token provided")
+	}
+
+	// Create a new client with the token
+	client := s.withToken(token)
+
+	// Fetch the recipe details
+	var recipeQuery struct {
 		Recipe struct {
 			ID              string  `graphql:"id"`
 			Title           string  `graphql:"title"`
@@ -527,49 +536,91 @@ func (s *RecipeService) GetRecipeByID(ctx context.Context, recipeID string) (*mo
 			UserID          string  `graphql:"user_id"`
 			FeaturedImage   string  `graphql:"featured_image"`
 			Price           float64 `graphql:"price"`
-			Steps           []struct {
-				ID          string  `graphql:"id"`
-				StepNumber  int     `graphql:"step_number"`
-				Description string  `graphql:"description"`
-				ImageURL    *string `graphql:"image_url"`
-			} `graphql:"recipe_steps(order_by: {step_number: asc})"`
-			Ingredients []struct {
-				ID           string  `graphql:"id"`
-				IngredientID string  `graphql:"ingredient_id"`
-				Quantity     string  `graphql:"quantity"`
-				Unit         *string `graphql:"unit"`
-				Ingredient   struct {
-					ID   string `graphql:"id"`
-					Name string `graphql:"name"`
-				} `graphql:"ingredient"`
-			} `graphql:"recipe_ingredients"`
-			Images []struct {
-				ID         string `graphql:"id"`
-				ImageURL   string `graphql:"image_url"`
-				IsFeatured bool   `graphql:"is_featured"`
-			} `graphql:"recipe_images"`
 		} `graphql:"recipes_by_pk(id: $id)"`
 	}
 
-	variables := map[string]interface{}{
+	recipeVars := map[string]interface{}{
 		"id": recipeID,
 	}
 
-	err := s.client.Query(ctx, &query, variables)
+	err := client.Query(ctx, &recipeQuery, recipeVars)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch recipe: %v", err)
 	}
 
-	if query.Recipe.ID == "" {
+	if recipeQuery.Recipe.ID == "" {
 		return nil, errors.New("recipe not found")
 	}
 
+	// Fetch the recipe steps
+	var stepsQuery struct {
+		Steps []struct {
+			ID          string  `graphql:"id"`
+			RecipeID    string  `graphql:"recipe_id"`
+			StepNumber  int     `graphql:"step_number"`
+			Description string  `graphql:"description"`
+			ImageURL    *string `graphql:"image_url"`
+		} `graphql:"recipe_steps(where: {recipe_id: {_eq: $recipe_id}}, order_by: {step_number: asc})"`
+	}
+
+	stepsVars := map[string]interface{}{
+		"recipe_id": recipeID,
+	}
+
+	err = client.Query(ctx, &stepsQuery, stepsVars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch recipe steps: %v", err)
+	}
+
+	// Fetch the recipe ingredients
+	var ingredientsQuery struct {
+		Ingredients []struct {
+			ID           string  `graphql:"id"`
+			RecipeID     string  `graphql:"recipe_id"`
+			IngredientID string  `graphql:"ingredient_id"`
+			Quantity     string  `graphql:"quantity"`
+			Unit         *string `graphql:"unit"`
+			Ingredient   struct {
+				ID   string `graphql:"id"`
+				Name string `graphql:"name"`
+			} `graphql:"ingredient"`
+		} `graphql:"recipe_ingredients(where: {recipe_id: {_eq: $recipe_id}})"`
+	}
+
+	ingredientsVars := map[string]interface{}{
+		"recipe_id": recipeID,
+	}
+
+	err = client.Query(ctx, &ingredientsQuery, ingredientsVars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch recipe ingredients: %v", err)
+	}
+
+	// Fetch the recipe images
+	var imagesQuery struct {
+		Images []struct {
+			ID         string `graphql:"id"`
+			RecipeID   string `graphql:"recipe_id"`
+			ImageURL   string `graphql:"image_url"`
+			IsFeatured bool   `graphql:"is_featured"`
+		} `graphql:"recipe_images(where: {recipe_id: {_eq: $recipe_id}})"`
+	}
+
+	imagesVars := map[string]interface{}{
+		"recipe_id": recipeID,
+	}
+
+	err = client.Query(ctx, &imagesQuery, imagesVars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch recipe images: %v", err)
+	}
+
 	// Convert steps
-	steps := make([]models.RecipeStep, len(query.Recipe.Steps))
-	for i, step := range query.Recipe.Steps {
+	steps := make([]models.RecipeStep, len(stepsQuery.Steps))
+	for i, step := range stepsQuery.Steps {
 		steps[i] = models.RecipeStep{
 			ID:          uuid.MustParse(step.ID),
-			RecipeID:    uuid.MustParse(query.Recipe.ID),
+			RecipeID:    uuid.MustParse(step.RecipeID),
 			StepNumber:  step.StepNumber,
 			Description: step.Description,
 			ImageURL:    step.ImageURL,
@@ -577,11 +628,11 @@ func (s *RecipeService) GetRecipeByID(ctx context.Context, recipeID string) (*mo
 	}
 
 	// Convert ingredients
-	ingredients := make([]models.RecipeIngredient, len(query.Recipe.Ingredients))
-	for i, ingredient := range query.Recipe.Ingredients {
+	ingredients := make([]models.RecipeIngredient, len(ingredientsQuery.Ingredients))
+	for i, ingredient := range ingredientsQuery.Ingredients {
 		ingredients[i] = models.RecipeIngredient{
 			ID:           uuid.MustParse(ingredient.ID),
-			RecipeID:     uuid.MustParse(query.Recipe.ID),
+			RecipeID:     uuid.MustParse(ingredient.RecipeID),
 			IngredientID: uuid.MustParse(ingredient.IngredientID),
 			Quantity:     ingredient.Quantity,
 			Unit:         ingredient.Unit,
@@ -589,25 +640,26 @@ func (s *RecipeService) GetRecipeByID(ctx context.Context, recipeID string) (*mo
 	}
 
 	// Convert images
-	images := make([]models.RecipeImage, len(query.Recipe.Images))
-	for i, image := range query.Recipe.Images {
+	images := make([]models.RecipeImage, len(imagesQuery.Images))
+	for i, image := range imagesQuery.Images {
 		images[i] = models.RecipeImage{
 			ID:         uuid.MustParse(image.ID),
-			RecipeID:   uuid.MustParse(query.Recipe.ID),
+			RecipeID:   uuid.MustParse(image.RecipeID),
 			ImageURL:   image.ImageURL,
 			IsFeatured: image.IsFeatured,
 		}
 	}
 
+	// Build the final recipe object
 	return &models.Recipe{
-		ID:              query.Recipe.ID,
-		Title:           query.Recipe.Title,
-		Description:     query.Recipe.Description,
-		PreparationTime: query.Recipe.PreparationTime,
-		CategoryID:      &query.Recipe.CategoryID,
-		UserID:          query.Recipe.UserID,
-		FeaturedImage:   query.Recipe.FeaturedImage,
-		Price:           query.Recipe.Price,
+		ID:              recipeQuery.Recipe.ID,
+		Title:           recipeQuery.Recipe.Title,
+		Description:     recipeQuery.Recipe.Description,
+		PreparationTime: recipeQuery.Recipe.PreparationTime,
+		CategoryID:      &recipeQuery.Recipe.CategoryID,
+		UserID:          recipeQuery.Recipe.UserID,
+		FeaturedImage:   recipeQuery.Recipe.FeaturedImage,
+		Price:           recipeQuery.Recipe.Price,
 		Steps:           steps,
 		Ingredients:     ingredients,
 		Images:          images,

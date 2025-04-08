@@ -136,21 +136,28 @@ func (h *Handler) CreateRecipe(c *fiber.Ctx) error {
 }
 
 func (h *Handler) GetRecipe(c *fiber.Ctx) error {
+	// Get token from Authorization header
+	token := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
+	if token == "" {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+			"error": "No authorization token provided",
+		})
+	}
+
+	// Create context with token
+	ctx := context.WithValue(c.Context(), "token", token)
+
+	// Get recipe ID from the URL parameter
 	recipeID := c.Params("id")
+
 	if recipeID == "" {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"error": "Recipe ID is required",
 		})
 	}
 
-	recipeUUID, err := uuid.Parse(recipeID)
-	if err != nil {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid recipe ID",
-		})
-	}
-
-	recipe, err := h.recipeService.GetRecipeByID(c.Context(), recipeUUID.String())
+	// Fetch the recipe by ID
+	recipe, err := h.recipeService.GetRecipeByID(ctx, recipeID)
 	if err != nil {
 		if err.Error() == "recipe not found" {
 			return c.Status(http.StatusNotFound).JSON(fiber.Map{
