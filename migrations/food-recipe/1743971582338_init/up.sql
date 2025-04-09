@@ -20,11 +20,23 @@ CREATE TABLE categories (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Create reciepe_categories table
+CREATE TABLE recipe_categories (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+    recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
+    category_id TEXT REFERENCES ingredients(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(recipe_id, category_id)
+);
+
+
 -- Create recipes table
 CREATE TABLE recipes (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    difficulty TEXT,
+    servings INTEGER,
     preparation_time INTEGER NOT NULL, -- in minutes
     category_id TEXT REFERENCES categories(id) ON DELETE SET NULL,
     user_id TEXT REFERENCES users(id) ON DELETE CASCADE,

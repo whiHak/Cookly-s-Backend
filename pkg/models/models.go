@@ -30,6 +30,8 @@ type Recipe struct {
 	ID              string             `json:"id"`
 	Title           string             `json:"title"`
 	Description     *string            `json:"description"`
+	Difficulty      *string            `json:"difficulty"`
+	Servings        *int               `json:"servings"`
 	PreparationTime int                `json:"preparation_time"`
 	CategoryID      *string            `json:"category_id"`
 	UserID          string             `json:"user_id"`
@@ -71,6 +73,7 @@ type RecipeIngredient struct {
 	IngredientID uuid.UUID `json:"ingredient_id"`
 	Quantity     string    `json:"quantity"`
 	Unit         *string   `json:"unit"`
+	Name         string    `json:"name"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
@@ -139,6 +142,8 @@ type AuthResponse struct {
 type CreateRecipeRequest struct {
 	Title           string             `json:"title"`
 	Description     string             `json:"description"`
+	Difficulty      string             `json:"difficulty"`
+	Servings        int                `json:"servings"`
 	PreparationTime int                `json:"preparation_time"`
 	CategoryID      string             `json:"category_id"`
 	FeaturedImage   string             `json:"featured_image"`

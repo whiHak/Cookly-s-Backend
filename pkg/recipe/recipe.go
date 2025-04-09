@@ -53,9 +53,9 @@ type RecipeIngredient struct {
 	IngredientID string  `graphql:"ingredient_id"`
 	Quantity     string  `graphql:"quantity"`
 	Unit         *string `graphql:"unit"`
+	Name         string  `graphql:"name"`
 	Ingredient   struct {
-		ID   string `graphql:"id"`
-		Name string `graphql:"name"`
+		ID string `graphql:"id"`
 	} `graphql:"ingredient"`
 }
 
@@ -69,6 +69,7 @@ type Recipe struct {
 	ID                string             `graphql:"id"`
 	Title             string             `graphql:"title"`
 	Description       *string            `graphql:"description"`
+	Difficulty        *string            `graphql:"difficulty"`
 	PreparationTime   int                `graphql:"preparation_time"`
 	CategoryID        string             `graphql:"category_id"`
 	UserID            string             `graphql:"user_id"`
@@ -100,13 +101,15 @@ func (s *RecipeService) CreateRecipeWithRelations(ctx context.Context, req model
 	var mutation struct {
 		InsertRecipes struct {
 			AffectedRows int `graphql:"affected_rows"`
-		} `graphql:"insert_recipes(objects: [{title: $title, description: $description, preparation_time: $preparation_time, category_id: $category_id, user_id: $user_id, featured_image: $featured_image, price: $price}])"`
+		} `graphql:"insert_recipes(objects: [{title: $title, description: $description, difficulty: $difficulty, servings: $servings, preparation_time: $preparation_time, category_id: $category_id, user_id: $user_id, featured_image: $featured_image, price: $price}])"`
 	}
 
 	mutationVars := map[string]interface{}{
 		"title":            req.Title,
 		"description":      req.Description,
 		"preparation_time": req.PreparationTime,
+		"difficulty":       req.Difficulty,
+		"servings":         req.Servings,
 		"category_id":      req.CategoryID,
 		"user_id":          userID,
 		"featured_image":   featuredImageURL,
@@ -128,6 +131,8 @@ func (s *RecipeService) CreateRecipeWithRelations(ctx context.Context, req model
 			ID              string  `graphql:"id"`
 			Title           string  `graphql:"title"`
 			Description     string  `graphql:"description"`
+			Difficulty      string  `graphql:"difficulty"`
+			Servings        int     `graphql:"servings"`
 			PreparationTime int     `graphql:"preparation_time"`
 			CategoryID      string  `graphql:"category_id"`
 			UserID          string  `graphql:"user_id"`
@@ -201,7 +206,7 @@ func (s *RecipeService) CreateRecipeWithRelations(ctx context.Context, req model
 
 			ingredientVars := map[string]interface{}{
 				"id":   graphql.String(ingredient.IngredientID.String()),
-				"name": graphql.String(ingredient.IngredientID.String()), // Use the ID as the name if not provided
+				"name": graphql.String(ingredient.Name), // Use the ID as the name if not provided
 			}
 
 			err = client.Mutate(ctx, &ingredientMutation, ingredientVars)
@@ -531,6 +536,8 @@ func (s *RecipeService) GetRecipeByID(ctx context.Context, recipeID string) (*mo
 			ID              string  `graphql:"id"`
 			Title           string  `graphql:"title"`
 			Description     *string `graphql:"description"`
+			Difficulty      *string `graphql:"difficulty"`
+			Servings        *int    `graphql:"servings"`
 			PreparationTime int     `graphql:"preparation_time"`
 			CategoryID      string  `graphql:"category_id"`
 			UserID          string  `graphql:"user_id"`
@@ -581,8 +588,8 @@ func (s *RecipeService) GetRecipeByID(ctx context.Context, recipeID string) (*mo
 			Quantity     string  `graphql:"quantity"`
 			Unit         *string `graphql:"unit"`
 			Ingredient   struct {
-				ID   string `graphql:"id"`
 				Name string `graphql:"name"`
+				ID   string `graphql:"id"`
 			} `graphql:"ingredient"`
 		} `graphql:"recipe_ingredients(where: {recipe_id: {_eq: $recipe_id}})"`
 	}
@@ -636,6 +643,7 @@ func (s *RecipeService) GetRecipeByID(ctx context.Context, recipeID string) (*mo
 			IngredientID: uuid.MustParse(ingredient.IngredientID),
 			Quantity:     ingredient.Quantity,
 			Unit:         ingredient.Unit,
+			Name:         ingredient.Ingredient.Name,
 		}
 	}
 
@@ -655,6 +663,8 @@ func (s *RecipeService) GetRecipeByID(ctx context.Context, recipeID string) (*mo
 		ID:              recipeQuery.Recipe.ID,
 		Title:           recipeQuery.Recipe.Title,
 		Description:     recipeQuery.Recipe.Description,
+		Difficulty:      recipeQuery.Recipe.Difficulty,
+		Servings:        recipeQuery.Recipe.Servings,
 		PreparationTime: recipeQuery.Recipe.PreparationTime,
 		CategoryID:      &recipeQuery.Recipe.CategoryID,
 		UserID:          recipeQuery.Recipe.UserID,
