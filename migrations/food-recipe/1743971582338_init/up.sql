@@ -119,7 +119,6 @@ CREATE TABLE recipe_ratings (
     user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(recipe_id, user_id)
 );
 
 -- Create purchases table

@@ -278,6 +278,16 @@ func (h *Handler) DeleteRecipe(c *fiber.Ctx) error {
 }
 
 func (h *Handler) LikeRecipe(c *fiber.Ctx) error {
+	token := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
+	if token == "" {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+			"error": "No authorization token provided",
+		})
+	}
+
+	// Create context with token
+	ctx := context.WithValue(c.Context(), "token", token)
+
 	userID := c.Locals("user_id").(string)
 	if userID == "" {
 		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
@@ -306,17 +316,28 @@ func (h *Handler) LikeRecipe(c *fiber.Ctx) error {
 		})
 	}
 
-	err = h.recipeService.LikeRecipe(c.Context(), recipeUUID, userUUID)
+	response, err := h.recipeService.LikeRecipe(ctx, recipeUUID, userUUID)
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
 
-	return c.SendStatus(http.StatusOK)
+	c.SendStatus(http.StatusOK)
+	return c.JSON(response)
 }
 
 func (h *Handler) UnlikeRecipe(c *fiber.Ctx) error {
+	token := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
+	if token == "" {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+			"error": "No authorization token provided",
+		})
+	}
+
+	// Create context with token
+	ctx := context.WithValue(c.Context(), "token", token)
+
 	userID := c.Locals("user_id").(string)
 	if userID == "" {
 		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
@@ -345,17 +366,29 @@ func (h *Handler) UnlikeRecipe(c *fiber.Ctx) error {
 		})
 	}
 
-	err = h.recipeService.UnlikeRecipe(c.Context(), recipeUUID, userUUID)
+	response, err := h.recipeService.UnlikeRecipe(ctx, recipeUUID, userUUID)
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
 
-	return c.SendStatus(http.StatusOK)
+	c.Status(http.StatusOK)
+	return c.JSON(response)
 }
 
 func (h *Handler) BookmarkRecipe(c *fiber.Ctx) error {
+
+	token := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
+	if token == "" {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+			"error": "No authorization token provided",
+		})
+	}
+
+	// Create context with token
+	ctx := context.WithValue(c.Context(), "token", token)
+
 	userID := c.Locals("user_id").(string)
 	if userID == "" {
 		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
@@ -384,17 +417,28 @@ func (h *Handler) BookmarkRecipe(c *fiber.Ctx) error {
 		})
 	}
 
-	err = h.recipeService.BookmarkRecipe(c.Context(), recipeUUID, userUUID)
+	res, err := h.recipeService.BookmarkRecipe(ctx, recipeUUID, userUUID)
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
 
-	return c.SendStatus(http.StatusOK)
+	c.SendStatus(http.StatusOK)
+	return c.JSON(res)
 }
 
 func (h *Handler) UnbookmarkRecipe(c *fiber.Ctx) error {
+	token := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
+	if token == "" {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+			"error": "No authorization token provided",
+		})
+	}
+
+	// Create context with token
+	ctx := context.WithValue(c.Context(), "token", token)
+
 	userID := c.Locals("user_id").(string)
 	if userID == "" {
 		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
@@ -423,17 +467,28 @@ func (h *Handler) UnbookmarkRecipe(c *fiber.Ctx) error {
 		})
 	}
 
-	err = h.recipeService.UnbookmarkRecipe(c.Context(), recipeUUID, userUUID)
+	res, err := h.recipeService.UnbookmarkRecipe(ctx, recipeUUID, userUUID)
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
 
-	return c.SendStatus(http.StatusOK)
+	c.SendStatus(http.StatusOK)
+	return c.JSON(res)
 }
 
 func (h *Handler) RateRecipe(c *fiber.Ctx) error {
+	token := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
+	if token == "" {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+			"error": "No authorization token provided",
+		})
+	}
+
+	// Create context with token
+	ctx := context.WithValue(c.Context(), "token", token)
+
 	userID := c.Locals("user_id").(string)
 	if userID == "" {
 		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
@@ -471,17 +526,28 @@ func (h *Handler) RateRecipe(c *fiber.Ctx) error {
 		})
 	}
 
-	err = h.recipeService.RateRecipe(c.Context(), recipeUUID, userUUID, req.Rating)
+	res, err := h.recipeService.RateRecipe(ctx, recipeUUID, userUUID, req.Rating)
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
 
-	return c.SendStatus(http.StatusOK)
+	c.SendStatus(http.StatusOK)
+	return c.JSON(res)
 }
 
 func (h *Handler) CommentOnRecipe(c *fiber.Ctx) error {
+	token := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
+	if token == "" {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+			"error": "No authorization token provided",
+		})
+	}
+
+	// Create context with token
+	ctx := context.WithValue(c.Context(), "token", token)
+
 	userID := c.Locals("user_id").(string)
 	if userID == "" {
 		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
@@ -497,7 +563,7 @@ func (h *Handler) CommentOnRecipe(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		Content string `json:"content"`
+		Content string `json:"comment"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -525,14 +591,54 @@ func (h *Handler) CommentOnRecipe(c *fiber.Ctx) error {
 		})
 	}
 
-	err = h.recipeService.CommentOnRecipe(c.Context(), recipeUUID, userUUID, req.Content)
+	res, err := h.recipeService.CommentOnRecipe(ctx, recipeUUID, userUUID, req.Content)
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
 
-	return c.SendStatus(http.StatusOK)
+	c.SendStatus(http.StatusOK)
+	return c.JSON(res)
+}
+
+func (h *Handler) GetRecipeComments(c *fiber.Ctx) error {
+	// Get token from Authorization header
+	token := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
+	if token == "" {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+			"error": "No authorization token provided",
+		})
+	}
+
+	// Create context with token
+	ctx := context.WithValue(c.Context(), "token", token)
+
+	// Get recipe ID from the URL parameter
+	recipeID := c.Params("id")
+	if recipeID == "" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"error": "Recipe ID is required",
+		})
+	}
+
+	// Parse recipe ID
+	recipeUUID, err := uuid.Parse(recipeID)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid recipe ID",
+		})
+	}
+
+	// Fetch comments for the recipe
+	comments, err := h.recipeService.GetCommentsOnRecipe(ctx, recipeUUID)
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(comments)
 }
 
 func (h *Handler) UploadImage(c *fiber.Ctx) error {

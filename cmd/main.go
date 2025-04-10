@@ -83,6 +83,7 @@ func main() {
 	recipes.Delete("/:id/bookmark", h.UnbookmarkRecipe)
 	recipes.Post("/:id/rate", h.RateRecipe)
 	recipes.Post("/:id/comment", h.CommentOnRecipe)
+	recipes.Get("/:id/comments", h.GetRecipeComments)
 
 	// Start the server
 	port := os.Getenv("PORT")

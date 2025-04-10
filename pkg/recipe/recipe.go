@@ -732,27 +732,60 @@ func (s *RecipeService) DeleteRecipe(ctx context.Context, recipeID string, userI
 	return s.client.Mutate(ctx, &mutation, variables)
 }
 
-func (s *RecipeService) LikeRecipe(ctx context.Context, recipeID uuid.UUID, userID uuid.UUID) error {
+func (s *RecipeService) LikeRecipe(ctx context.Context, recipeID uuid.UUID, userID uuid.UUID) (map[string]interface{}, error) {
+	// Get token from context
+	token, ok := ctx.Value("token").(string)
+	if !ok || token == "" {
+		return nil, errors.New("no token found in context")
+	}
+
+	// Use client with token
+	client := s.withToken(token)
+
+	// Mutation for liking a recipe
 	var mutation struct {
 		InsertLike struct {
-			AffectedRows int
-		} `graphql:"insert_recipe_likes_one(object: $like)"`
+			AffectedRows int `graphql:"affected_rows"`
+		} `graphql:"insert_recipe_likes(objects: [{recipe_id: $recipe_id, user_id: $user_id}])"`
 	}
 
 	variables := map[string]interface{}{
-		"like": map[string]interface{}{
-			"recipe_id": recipeID,
-			"user_id":   userID,
-		},
+		"recipe_id": recipeID.String(),
+		"user_id":   userID.String(),
 	}
 
-	return s.client.Mutate(ctx, &mutation, variables)
+	// Execute mutation
+	err := client.Mutate(ctx, &mutation, variables)
+	if err != nil {
+		return nil, fmt.Errorf("failed to like recipe: %v", err)
+	}
+
+	// Log a warning if no rows were affected
+	if mutation.InsertLike.AffectedRows == 0 {
+		fmt.Printf("Warning: No like was added for recipe_id: %s, user_id: %s\n", recipeID, userID)
+	}
+
+	// Return a valid JSON response
+	return map[string]interface{}{
+		"status":  "success",
+		"message": "Recipe liked successfully",
+	}, nil
 }
 
-func (s *RecipeService) UnlikeRecipe(ctx context.Context, recipeID uuid.UUID, userID uuid.UUID) error {
+func (s *RecipeService) UnlikeRecipe(ctx context.Context, recipeID uuid.UUID, userID uuid.UUID) (map[string]interface{}, error) {
+	// Get token from context
+	token, ok := ctx.Value("token").(string)
+	if !ok || token == "" {
+		return nil, errors.New("no token found in context")
+	}
+
+	// Use client with token
+	client := s.withToken(token)
+
+	// Mutation for unliking a recipe
 	var mutation struct {
 		DeleteLike struct {
-			AffectedRows int
+			AffectedRows int `graphql:"affected_rows"`
 		} `graphql:"delete_recipe_likes(where: {recipe_id: {_eq: $recipe_id}, user_id: {_eq: $user_id}})"`
 	}
 
@@ -761,30 +794,78 @@ func (s *RecipeService) UnlikeRecipe(ctx context.Context, recipeID uuid.UUID, us
 		"user_id":   userID.String(),
 	}
 
-	return s.client.Mutate(ctx, &mutation, variables)
+	// Execute mutation
+	err := client.Mutate(ctx, &mutation, variables)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unlike recipe: %v", err)
+	}
+
+	// Log a warning if no rows were affected
+	if mutation.DeleteLike.AffectedRows == 0 {
+		fmt.Printf("Warning: No like was removed for recipe_id: %s, user_id: %s\n", recipeID, userID)
+	}
+
+	// Return a valid JSON response
+	return map[string]interface{}{
+		"status":  "success",
+		"message": "Recipe unliked successfully",
+	}, nil
 }
 
-func (s *RecipeService) BookmarkRecipe(ctx context.Context, recipeID uuid.UUID, userID uuid.UUID) error {
+func (s *RecipeService) BookmarkRecipe(ctx context.Context, recipeID uuid.UUID, userID uuid.UUID) (map[string]interface{}, error) {
+	// Get token from context
+	token, ok := ctx.Value("token").(string)
+	if !ok || token == "" {
+		return nil, errors.New("no token found in context")
+	}
+
+	// Use client with token
+	client := s.withToken(token)
+
+	// Mutation for bookmarking a recipe
 	var mutation struct {
 		InsertBookmark struct {
-			AffectedRows int
-		} `graphql:"insert_recipe_bookmarks_one(object: $bookmark)"`
+			AffectedRows int `graphql:"affected_rows"`
+		} `graphql:"insert_recipe_bookmarks(objects: [{recipe_id: $recipe_id, user_id: $user_id}])"`
 	}
 
 	variables := map[string]interface{}{
-		"bookmark": map[string]interface{}{
-			"recipe_id": recipeID,
-			"user_id":   userID,
-		},
+		"recipe_id": recipeID.String(),
+		"user_id":   userID.String(),
 	}
 
-	return s.client.Mutate(ctx, &mutation, variables)
+	// Execute mutation
+	err := client.Mutate(ctx, &mutation, variables)
+	if err != nil {
+		return nil, fmt.Errorf("failed to bookmark recipe: %v", err)
+	}
+
+	// Log a warning if no rows were affected
+	if mutation.InsertBookmark.AffectedRows == 0 {
+		fmt.Printf("Warning: No bookmark was added for recipe_id: %s, user_id: %s\n", recipeID, userID)
+	}
+
+	// Return a valid JSON response
+	return map[string]interface{}{
+		"status":  "success",
+		"message": "Recipe bookmarked successfully",
+	}, nil
 }
 
-func (s *RecipeService) UnbookmarkRecipe(ctx context.Context, recipeID uuid.UUID, userID uuid.UUID) error {
+func (s *RecipeService) UnbookmarkRecipe(ctx context.Context, recipeID uuid.UUID, userID uuid.UUID) (map[string]interface{}, error) {
+	// Get token from context
+	token, ok := ctx.Value("token").(string)
+	if !ok || token == "" {
+		return nil, errors.New("no token found in context")
+	}
+
+	// Use client with token
+	client := s.withToken(token)
+
+	// Mutation for unbookmarking a recipe
 	var mutation struct {
 		DeleteBookmark struct {
-			AffectedRows int
+			AffectedRows int `graphql:"affected_rows"`
 		} `graphql:"delete_recipe_bookmarks(where: {recipe_id: {_eq: $recipe_id}, user_id: {_eq: $user_id}})"`
 	}
 
@@ -793,45 +874,181 @@ func (s *RecipeService) UnbookmarkRecipe(ctx context.Context, recipeID uuid.UUID
 		"user_id":   userID.String(),
 	}
 
-	return s.client.Mutate(ctx, &mutation, variables)
-}
-
-func (s *RecipeService) RateRecipe(ctx context.Context, recipeID uuid.UUID, userID uuid.UUID, rating int) error {
-	if rating < 1 || rating > 5 {
-		return errors.New("rating must be between 1 and 5")
+	// Execute mutation
+	err := client.Mutate(ctx, &mutation, variables)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unbookmark recipe: %v", err)
 	}
 
+	// Log a warning if no rows were affected
+	if mutation.DeleteBookmark.AffectedRows == 0 {
+		fmt.Printf("Warning: No bookmark was removed for recipe_id: %s, user_id: %s\n", recipeID, userID)
+	}
+
+	// Return a valid JSON response
+	return map[string]interface{}{
+		"status":  "success",
+		"message": "Recipe unbookmarked successfully",
+	}, nil
+}
+
+func (s *RecipeService) RateRecipe(ctx context.Context, recipeID uuid.UUID, userID uuid.UUID, rating int) (map[string]interface{}, error) {
+	// Validate the rating value
+	if rating < 1 || rating > 5 {
+		return nil, errors.New("rating must be between 1 and 5")
+	}
+
+	// Get token from context
+	token, ok := ctx.Value("token").(string)
+	if !ok || token == "" {
+		return nil, errors.New("no token found in context")
+	}
+
+	// Use client with token
+	client := s.withToken(token)
+
+	// Mutation for rating a recipe
 	var mutation struct {
 		InsertRating struct {
-			AffectedRows int
-		} `graphql:"insert_recipe_ratings_one(object: $rating, on_conflict: {constraint: recipe_ratings_recipe_id_user_id_key, update_columns: [rating]})"`
+			AffectedRows int `graphql:"affected_rows"`
+		} `graphql:"insert_recipe_ratings(objects: [{recipe_id: $recipe_id, user_id: $user_id, rating: $rating}])"`
 	}
 
 	variables := map[string]interface{}{
-		"rating": map[string]interface{}{
-			"recipe_id": recipeID,
-			"user_id":   userID,
-			"rating":    rating,
-		},
+		"recipe_id": recipeID.String(),
+		"user_id":   userID.String(),
+		"rating":    rating,
 	}
 
-	return s.client.Mutate(ctx, &mutation, variables)
+	// Execute mutation
+	err := client.Mutate(ctx, &mutation, variables)
+	if err != nil {
+		return nil, fmt.Errorf("failed to rate recipe: %v", err)
+	}
+
+	// Log a warning if no rows were affected
+	if mutation.InsertRating.AffectedRows == 0 {
+		fmt.Printf("Warning: No rating was added or updated for recipe_id: %s, user_id: %s\n", recipeID, userID)
+	}
+
+	// Return a valid JSON response
+	return map[string]interface{}{
+		"status":  "success",
+		"message": "Recipe rated successfully",
+	}, nil
 }
 
-func (s *RecipeService) CommentOnRecipe(ctx context.Context, recipeID uuid.UUID, userID uuid.UUID, content string) error {
+func (s *RecipeService) CommentOnRecipe(ctx context.Context, recipeID uuid.UUID, userID uuid.UUID, content string) (map[string]interface{}, error) {
+	// Get token from context
+	token, ok := ctx.Value("token").(string)
+	if !ok || token == "" {
+		return nil, errors.New("no token found in context")
+	}
+
+	// Use client with token
+	client := s.withToken(token)
+
+	// Mutation for commenting on a recipe
 	var mutation struct {
 		InsertComment struct {
-			AffectedRows int
-		} `graphql:"insert_recipe_comments_one(object: $comment)"`
+			AffectedRows int `graphql:"affected_rows"`
+		} `graphql:"insert_recipe_comments(objects: [{recipe_id: $recipe_id, user_id: $user_id, content: $content}])"`
 	}
 
 	variables := map[string]interface{}{
-		"comment": map[string]interface{}{
-			"recipe_id": recipeID,
-			"user_id":   userID,
-			"content":   content,
-		},
+		"recipe_id": recipeID.String(),
+		"user_id":   userID.String(),
+		"content":   content,
 	}
 
-	return s.client.Mutate(ctx, &mutation, variables)
+	// Execute mutation
+	err := client.Mutate(ctx, &mutation, variables)
+	if err != nil {
+		return nil, fmt.Errorf("failed to comment on recipe: %v", err)
+	}
+
+	// Log a warning if no rows were affected
+	if mutation.InsertComment.AffectedRows == 0 {
+		fmt.Printf("Warning: No comment was added for recipe_id: %s, user_id: %s\n", recipeID, userID)
+	}
+
+	// Return a valid JSON response
+	return map[string]interface{}{
+		"status":  "success",
+		"message": "Comment added successfully",
+	}, nil
+}
+
+func (s *RecipeService) GetCommentsOnRecipe(ctx context.Context, recipeID uuid.UUID) ([]map[string]interface{}, error) {
+	// Get token from context
+	token, ok := ctx.Value("token").(string)
+	if !ok || token == "" {
+		return nil, errors.New("no token found in context")
+	}
+
+	// Use client with token
+	client := s.withToken(token)
+
+	// Query for fetching comments
+	var commentsQuery struct {
+		Comments []struct {
+			ID        string `graphql:"id"`
+			Content   string `graphql:"content"`
+			CreatedAt string `graphql:"created_at"`
+			UserID    string `graphql:"user_id"`
+		} `graphql:"recipe_comments(where: {recipe_id: {_eq: $recipe_id}}, order_by: {created_at: desc})"`
+	}
+
+	commentsVars := map[string]interface{}{
+		"recipe_id": recipeID.String(),
+	}
+
+	// Execute comments query
+	err := client.Query(ctx, &commentsQuery, commentsVars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch comments: %v", err)
+	}
+
+	// Fetch user details for each unique user ID
+	userMap := make(map[string]map[string]interface{})
+	for _, comment := range commentsQuery.Comments {
+		if _, exists := userMap[comment.UserID]; !exists {
+			var userQuery struct {
+				Users []struct {
+					ID       string `graphql:"id"`
+					FullName string `graphql:"full_name"`
+				} `graphql:"users(where: {id: {_eq: $user_id}})"`
+			}
+
+			userVars := map[string]interface{}{
+				"user_id": comment.UserID,
+			}
+
+			// Execute user query
+			err := client.Query(ctx, &userQuery, userVars)
+			if err != nil {
+				return nil, fmt.Errorf("failed to fetch user: %v", err)
+			}
+
+			if len(userQuery.Users) > 0 {
+				userMap[comment.UserID] = map[string]interface{}{
+					"id":   userQuery.Users[0].ID,
+					"name": userQuery.Users[0].FullName,
+				}
+			}
+		}
+	}
+
+	// Format the response
+	comments := make([]map[string]interface{}, len(commentsQuery.Comments))
+	for i, comment := range commentsQuery.Comments {
+		comments[i] = map[string]interface{}{
+			"id":         comment.ID,
+			"content":    comment.Content,
+			"created_at": comment.CreatedAt,
+			"user":       userMap[comment.UserID],
+		}
+	}
+
+	return comments, nil
 }
