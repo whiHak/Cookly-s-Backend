@@ -19,11 +19,9 @@ type User struct {
 }
 
 type Category struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description *string   `json:"description"`
-	ImageURL    *string   `json:"image_url"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Recipe struct {
@@ -41,6 +39,7 @@ type Recipe struct {
 	UpdatedAt       time.Time          `json:"updated_at"`
 	Steps           []RecipeStep       `json:"steps"`
 	Ingredients     []RecipeIngredient `json:"ingredients"`
+	Categories      []RecipeCategory   `json:"categories"`
 	Images          []RecipeImage      `json:"images"`
 }
 
@@ -66,7 +65,6 @@ type Ingredient struct {
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
 }
-
 type RecipeIngredient struct {
 	ID           uuid.UUID `json:"id"`
 	RecipeID     uuid.UUID `json:"recipe_id"`
@@ -77,6 +75,13 @@ type RecipeIngredient struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
+type RecipeCategory struct {
+	ID         uuid.UUID `json:"id"`
+	RecipeID   uuid.UUID `json:"recipe_id"`
+	CategoryID uuid.UUID `json:"category_id"`
+	Name       string    `json:"name"`
+	CreatedAt  time.Time `json:"created_at"`
+}
 type RecipeLike struct {
 	ID        uuid.UUID `json:"id"`
 	RecipeID  uuid.UUID `json:"recipe_id"`
@@ -145,11 +150,11 @@ type CreateRecipeRequest struct {
 	Difficulty      string             `json:"difficulty"`
 	Servings        int                `json:"servings"`
 	PreparationTime int                `json:"preparation_time"`
-	CategoryID      string             `json:"category_id"`
 	FeaturedImage   string             `json:"featured_image"`
 	Price           float64            `json:"price"`
 	Steps           []Step             `json:"steps"`
 	Ingredients     []RecipeIngredient `json:"ingredients"`
+	Categories      []RecipeCategory   `json:"categories"`
 	Images          []RecipeImageInput `json:"images"`
 }
 

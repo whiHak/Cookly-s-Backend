@@ -14,9 +14,7 @@ CREATE TABLE users (
 -- Create categories table
 CREATE TABLE categories (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    description TEXT,
-    image_url TEXT,
+    name VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -24,7 +22,7 @@ CREATE TABLE categories (
 CREATE TABLE recipe_categories (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
     recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
-    category_id TEXT REFERENCES ingredients(id) ON DELETE CASCADE,
+    category_id TEXT REFERENCES categories(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(recipe_id, category_id)
 );
@@ -38,7 +36,6 @@ CREATE TABLE recipes (
     difficulty TEXT,
     servings INTEGER,
     preparation_time INTEGER NOT NULL, -- in minutes
-    category_id TEXT REFERENCES categories(id) ON DELETE SET NULL,
     user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     featured_image TEXT NOT NULL,
     price INTEGER NOT NULL -- for recipe purchase feature

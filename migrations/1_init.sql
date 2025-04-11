@@ -1,6 +1,6 @@
 -- Create users table
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
     username VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
@@ -13,31 +13,40 @@ CREATE TABLE users (
 
 -- Create categories table
 CREATE TABLE categories (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL UNIQUE,
-    description TEXT,
-    image_url TEXT,
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+    name VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Create reciepe_categories table
+CREATE TABLE recipe_categories (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+    recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
+    category_id TEXT REFERENCES categories(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(recipe_id, category_id)
+);
+
+
 -- Create recipes table
 CREATE TABLE recipes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    difficulty TEXT,
+    servings INTEGER,
     preparation_time INTEGER NOT NULL, -- in minutes
-    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     featured_image TEXT NOT NULL,
-    price DECIMAL(10,2), -- for recipe purchase feature
+    price INTEGER NOT NULL -- for recipe purchase feature
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Create recipe_images table
 CREATE TABLE recipe_images (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+    recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
     image_url TEXT NOT NULL,
     is_featured BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -45,8 +54,8 @@ CREATE TABLE recipe_images (
 
 -- Create recipe_steps table
 CREATE TABLE recipe_steps (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+    recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
     step_number INTEGER NOT NULL,
     description TEXT NOT NULL,
     image_url TEXT,
@@ -56,16 +65,16 @@ CREATE TABLE recipe_steps (
 
 -- Create ingredients table
 CREATE TABLE ingredients (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
     name VARCHAR(255) NOT NULL UNIQUE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Create recipe_ingredients table (junction table)
 CREATE TABLE recipe_ingredients (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
-    ingredient_id UUID REFERENCES ingredients(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+    recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
+    ingredient_id TEXT REFERENCES ingredients(id) ON DELETE CASCADE,
     quantity VARCHAR(255) NOT NULL,
     unit VARCHAR(50),
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -74,27 +83,27 @@ CREATE TABLE recipe_ingredients (
 
 -- Create likes table
 CREATE TABLE recipe_likes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+    recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(recipe_id, user_id)
 );
 
 -- Create bookmarks table
 CREATE TABLE recipe_bookmarks (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+    recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(recipe_id, user_id)
 );
 
 -- Create comments table
 CREATE TABLE recipe_comments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+    recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -102,19 +111,18 @@ CREATE TABLE recipe_comments (
 
 -- Create ratings table
 CREATE TABLE recipe_ratings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+    recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(recipe_id, user_id)
 );
 
 -- Create purchases table
 CREATE TABLE recipe_purchases (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+    recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     amount DECIMAL(10,2) NOT NULL,
     transaction_id VARCHAR(255) NOT NULL,
     status VARCHAR(50) NOT NULL,
