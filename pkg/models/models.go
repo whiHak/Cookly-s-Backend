@@ -37,6 +37,7 @@ type Recipe struct {
 	Price           float64            `json:"price"`
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
+	User            []User             `json:"user"`
 	Steps           []RecipeStep       `json:"steps"`
 	Ingredients     []RecipeIngredient `json:"ingredients"`
 	Categories      []RecipeCategory   `json:"categories"`

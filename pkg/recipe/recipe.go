@@ -372,6 +372,20 @@ func (s *RecipeService) GetAllRecipes(ctx context.Context) ([]*models.Recipe, er
 		return nil, fmt.Errorf("failed to fetch recipes: %v", err)
 	}
 
+	//Fetch Recipe Users
+	var usersQuery struct {
+		Users []struct {
+			ID       string  `graphql:"id"`
+			FullName string  `graphql:"full_name"`
+			Username *string `graphql:"username"`
+		} `graphql:"users"`
+	}
+
+	err = client.Query(ctx, &usersQuery, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch users: %v", err)
+	}
+
 	// Get all recipe steps
 	var stepsQuery struct {
 		Steps []struct {
@@ -525,6 +539,16 @@ func (s *RecipeService) GetAllRecipes(ctx context.Context) ([]*models.Recipe, er
 		})
 	}
 
+	//Create a map to store user by recipe ID
+	userByRecipe := make(map[string][]models.User)
+	for _, user := range usersQuery.Users {
+		userByRecipe[user.ID] = append(userByRecipe[user.ID], models.User{
+			ID:       uuid.MustParse(user.ID),
+			FullName: user.FullName,
+			Username: *user.Username,
+		})
+	}
+
 	// Build the final recipes slice
 	recipes := make([]*models.Recipe, len(recipesQuery.Recipes))
 	for i, recipe := range recipesQuery.Recipes {
@@ -536,6 +560,7 @@ func (s *RecipeService) GetAllRecipes(ctx context.Context) ([]*models.Recipe, er
 			UserID:          recipe.UserID,
 			FeaturedImage:   recipe.FeaturedImage,
 			Price:           recipe.Price,
+			User:            userByRecipe[recipe.UserID],
 			Steps:           stepsByRecipe[recipe.ID],
 			Ingredients:     ingredientsByRecipe[recipe.ID],
 			Categories:      categoriesByRecipe[recipe.ID],
@@ -581,6 +606,33 @@ func (s *RecipeService) GetRecipeByID(ctx context.Context, recipeID string) (*mo
 
 	if recipeQuery.Recipe.ID == "" {
 		return nil, errors.New("recipe not found")
+	}
+
+	// Fetch the recipe user
+	var userQuery struct {
+		User struct {
+			ID       string  `graphql:"id"`
+			FullName string  `graphql:"full_name"`
+			Username *string `graphql:"username"`
+		} `graphql:"users_by_pk(id: $user_id)"`
+	}
+
+	userVars := map[string]interface{}{
+		"user_id": recipeQuery.Recipe.UserID,
+	}
+
+	err = client.Query(ctx, &userQuery, userVars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch recipe user: %v", err)
+	}
+
+	var user []models.User
+	if userQuery.User.ID != "" {
+		user = []models.User{{
+			ID:       uuid.MustParse(userQuery.User.ID),
+			FullName: userQuery.User.FullName,
+			Username: *userQuery.User.Username,
+		}}
 	}
 
 	// Fetch the recipe steps
@@ -751,6 +803,7 @@ func (s *RecipeService) GetRecipeByID(ctx context.Context, recipeID string) (*mo
 		UserID:          recipeQuery.Recipe.UserID,
 		FeaturedImage:   recipeQuery.Recipe.FeaturedImage,
 		Price:           recipeQuery.Recipe.Price,
+		User:            user,
 		Steps:           steps,
 		Ingredients:     ingredients,
 		Categories:      categories,
