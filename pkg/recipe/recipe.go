@@ -633,10 +633,14 @@ func (s *RecipeService) GetRecipeByID(ctx context.Context, recipeID string) (*mo
 			ID         string `graphql:"id"`
 			RecipeID   string `graphql:"recipe_id"`
 			CategoryID string `graphql:"category_id"`
-		} `graphql:"recipe_categories"`
+		} `graphql:"recipe_categories(where: {recipe_id: {_eq: $recipe_id}})"`
 	}
 
-	err = client.Query(ctx, &recipeCategoriesQuery, nil)
+	categoriesVar := map[string]interface{}{
+		"recipe_id": recipeID,
+	}
+
+	err = client.Query(ctx, &recipeCategoriesQuery, categoriesVar)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch recipe categories: %v", err)
 	}
