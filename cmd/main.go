@@ -63,6 +63,9 @@ func main() {
 	// Public routes
 	app.Post("/api/auth/register", h.Register)
 	app.Post("/api/auth/login", h.Login)
+	app.Get("/api/recipes/all", h.GetAllRecipes)
+	app.Get("/api/recipes/:id", h.GetRecipe)
+	app.Get("/api/recipes/:id/comments", h.GetRecipeComments)
 
 	// Protected routes
 	api := app.Group("/api", middleware.AuthMiddleware())
@@ -70,8 +73,6 @@ func main() {
 	// Recipe routes
 	recipes := api.Group("/recipes")
 	recipes.Post("/", h.CreateRecipe)
-	recipes.Get("/all", h.GetAllRecipes)
-	recipes.Get("/:id", h.GetRecipe)
 	recipes.Put("/:id", h.UpdateRecipe)
 	recipes.Delete("/:id", h.DeleteRecipe)
 	recipes.Post("/upload", h.UploadImage)
@@ -83,7 +84,6 @@ func main() {
 	recipes.Delete("/:id/bookmark", h.UnbookmarkRecipe)
 	recipes.Post("/:id/rate", h.RateRecipe)
 	recipes.Post("/:id/comment", h.CommentOnRecipe)
-	recipes.Get("/:id/comments", h.GetRecipeComments)
 
 	// Start the server
 	port := os.Getenv("PORT")

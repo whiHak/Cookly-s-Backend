@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/google/uuid"
 	"github.com/hasura/go-graphql-client"
@@ -23,13 +24,23 @@ type headerTransport struct {
 func (t *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if t.token != "" {
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", t.token))
+	} else {
+		// For public routes, use admin secret
+		adminSecret := os.Getenv("HASURA_ADMIN_SECRET")
+		if adminSecret != "" {
+			req.Header.Set("x-hasura-admin-secret", adminSecret)
+		}
 	}
 	return http.DefaultTransport.RoundTrip(req)
 }
 
 func NewRecipeService(hasuraEndpoint string) *RecipeService {
+	// Create transport with empty token for public routes
+	transport := &headerTransport{token: ""}
+	httpClient := &http.Client{Transport: transport}
+
 	return &RecipeService{
-		client: graphql.NewClient(hasuraEndpoint, nil),
+		client: graphql.NewClient(hasuraEndpoint, httpClient),
 		url:    hasuraEndpoint,
 	}
 }
@@ -345,14 +356,8 @@ func (s *RecipeService) uploadImage(ctx context.Context, base64Image string) (st
 }
 
 func (s *RecipeService) GetAllRecipes(ctx context.Context) ([]*models.Recipe, error) {
-	// Get token from context
-	token, ok := ctx.Value("token").(string)
-	if !ok || token == "" {
-		return nil, errors.New("no authorization token provided")
-	}
-
-	// Create a new client with the token
-	client := s.withToken(token)
+	// Create a new client without token for public access
+	client := s.client
 
 	// First, get all recipes
 	var recipesQuery struct {
@@ -572,13 +577,8 @@ func (s *RecipeService) GetAllRecipes(ctx context.Context) ([]*models.Recipe, er
 }
 
 func (s *RecipeService) GetRecipeByID(ctx context.Context, recipeID string) (*models.Recipe, error) {
-	token, ok := ctx.Value("token").(string)
-	if !ok || token == "" {
-		return nil, errors.New("no authorization token provided")
-	}
-
-	// Create a new client with the token
-	client := s.withToken(token)
+	// Create a new client without token for public access
+	client := s.client
 
 	// Fetch the recipe details
 	var recipeQuery struct {
@@ -1114,14 +1114,8 @@ func (s *RecipeService) CommentOnRecipe(ctx context.Context, recipeID uuid.UUID,
 }
 
 func (s *RecipeService) GetCommentsOnRecipe(ctx context.Context, recipeID uuid.UUID) ([]map[string]interface{}, error) {
-	// Get token from context
-	token, ok := ctx.Value("token").(string)
-	if !ok || token == "" {
-		return nil, errors.New("no token found in context")
-	}
-
-	// Use client with token
-	client := s.withToken(token)
+	// Create a new client without token for public access
+	client := s.client
 
 	// Query for fetching comments
 	var commentsQuery struct {
