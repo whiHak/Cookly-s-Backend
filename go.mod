@@ -2,6 +2,7 @@ module github.com/whiHak/food-recipe-backend
 
 go 1.24.0
 
+
 require (
 	github.com/99designs/gqlgen v0.17.70 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
