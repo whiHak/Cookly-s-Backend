@@ -41,12 +41,12 @@ type VerifyPaymentResponse struct {
 	Message string `json:"message"`
 	Status  string `json:"status"`
 	Data    struct {
-		Amount      string `json:"amount"`
-		Currency    string `json:"currency"`
-		Status      string `json:"status"`
-		Reference   string `json:"reference"`
-		TxRef       string `json:"tx_ref"`
-		PaymentType string `json:"payment_type"`
+		Amount      float64 `json:"amount"`
+		Currency    string  `json:"currency"`
+		Status      string  `json:"status"`
+		Reference   string  `json:"reference"`
+		TxRef       string  `json:"tx_ref"`
+		PaymentType string  `json:"payment_type"`
 	} `json:"data"`
 }
 

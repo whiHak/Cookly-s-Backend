@@ -12,6 +12,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/whiHak/food-recipe-backend/pkg/handlers"
 	"github.com/whiHak/food-recipe-backend/pkg/middleware"
+	"github.com/whiHak/food-recipe-backend/pkg/payment"
 )
 
 func main() {
@@ -57,8 +58,12 @@ func main() {
 		})
 	})
 
+	// Initialize services
+	chapaService := payment.NewChapaService()
+
 	// Create handlers
 	h := handlers.NewHandler(hasuraEndpoint)
+	ph := handlers.NewPaymentHandler(chapaService)
 
 	// Public routes
 	app.Post("/api/auth/register", h.Register)
@@ -84,6 +89,10 @@ func main() {
 	recipes.Delete("/:id/bookmark", h.UnbookmarkRecipe)
 	recipes.Post("/:id/rate", h.RateRecipe)
 	recipes.Post("/:id/comment", h.CommentOnRecipe)
+
+	// Payment routes
+	payments := api.Group("/payments")
+	payments.Get("/verify/:txRef", ph.VerifyPayment)
 
 	// Start the server
 	port := os.Getenv("PORT")
