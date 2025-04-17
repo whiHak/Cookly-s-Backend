@@ -842,20 +842,25 @@ func (s *RecipeService) UpdateRecipe(ctx context.Context, recipeID string, req m
 	return s.client.Mutate(ctx, &mutation, variables)
 }
 
-func (s *RecipeService) DeleteRecipe(ctx context.Context, recipeID string, userID string) error {
-	// First verify the recipe belongs to the user
+func (s *RecipeService) DeleteRecipe(ctx context.Context, recipeID string, userID string) (*models.Recipe, error) {
+	// Get recipe first to check ownership
 	recipe, err := s.GetRecipeByID(ctx, recipeID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if recipe.UserID != userID {
-		return errors.New("unauthorized: recipe does not belong to user")
+		return nil, errors.New("unauthorized: recipe does not belong to user")
 	}
+
+	// Create a client with the token
+	client := s.withToken(ctx.Value("token").(string))
 
 	var mutation struct {
 		DeleteRecipe struct {
-			AffectedRows int
+			ID          string  `graphql:"id"`
+			Title       string  `graphql:"title"`
+			Description *string `graphql:"description"`
 		} `graphql:"delete_recipes_by_pk(id: $id)"`
 	}
 
@@ -863,7 +868,16 @@ func (s *RecipeService) DeleteRecipe(ctx context.Context, recipeID string, userI
 		"id": recipeID,
 	}
 
-	return s.client.Mutate(ctx, &mutation, variables)
+	if err := client.Mutate(ctx, &mutation, variables); err != nil {
+		return nil, fmt.Errorf("failed to delete recipe: %w", err)
+	}
+
+	// Return the deleted recipe data
+	return &models.Recipe{
+		ID:          mutation.DeleteRecipe.ID,
+		Title:       mutation.DeleteRecipe.Title,
+		Description: mutation.DeleteRecipe.Description,
+	}, nil
 }
 
 func (s *RecipeService) LikeRecipe(ctx context.Context, recipeID uuid.UUID, userID uuid.UUID) (map[string]interface{}, error) {

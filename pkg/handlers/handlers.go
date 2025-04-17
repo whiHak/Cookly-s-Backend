@@ -246,7 +246,18 @@ func (h *Handler) DeleteRecipe(c *fiber.Ctx) error {
 		})
 	}
 
-	err = h.recipeService.DeleteRecipe(c.Context(), recipeUUID.String(), userUUID.String())
+	// Get token from Authorization header
+	token := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
+	if token == "" {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+			"error": "No authorization token provided",
+		})
+	}
+
+	// Create context with token
+	ctx := context.WithValue(c.Context(), "token", token)
+
+	deletedRecipe, err := h.recipeService.DeleteRecipe(ctx, recipeUUID.String(), userUUID.String())
 	if err != nil {
 		if err.Error() == "recipe not found" {
 			return c.Status(http.StatusNotFound).JSON(fiber.Map{
@@ -263,7 +274,10 @@ func (h *Handler) DeleteRecipe(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.SendStatus(http.StatusOK)
+	return c.Status(http.StatusOK).JSON(fiber.Map{
+		"message": "Recipe deleted successfully",
+		"recipe":  deletedRecipe,
+	})
 }
 
 func (h *Handler) LikeRecipe(c *fiber.Ctx) error {
