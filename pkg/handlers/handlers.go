@@ -169,6 +169,17 @@ func (h *Handler) UpdateRecipe(c *fiber.Ctx) error {
 		})
 	}
 
+	// Get token from Authorization header
+	token := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
+	if token == "" {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+			"error": "No authorization token provided",
+		})
+	}
+
+	// Create context with token
+	ctx := context.WithValue(c.Context(), "token", token)
+
 	recipeID := c.Params("id")
 	if recipeID == "" {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -176,8 +187,10 @@ func (h *Handler) UpdateRecipe(c *fiber.Ctx) error {
 		})
 	}
 
+	fmt.Println("Received payload:", string(c.Body()))
 	var req models.CreateRecipeRequest
 	if err := c.BodyParser(&req); err != nil {
+		fmt.Println("Error parsing body:", err)
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
@@ -197,7 +210,7 @@ func (h *Handler) UpdateRecipe(c *fiber.Ctx) error {
 		})
 	}
 
-	err = h.recipeService.UpdateRecipe(c.Context(), recipeUUID.String(), req, userUUID.String())
+	updatedRecipe, err := h.recipeService.UpdateRecipe(ctx, recipeUUID.String(), req, userUUID.String())
 	if err != nil {
 		if err.Error() == "recipe not found" {
 			return c.Status(http.StatusNotFound).JSON(fiber.Map{
@@ -214,7 +227,7 @@ func (h *Handler) UpdateRecipe(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.SendStatus(http.StatusOK)
+	return c.Status(http.StatusOK).JSON(updatedRecipe)
 }
 
 func (h *Handler) DeleteRecipe(c *fiber.Ctx) error {

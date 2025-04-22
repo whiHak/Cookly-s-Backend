@@ -811,35 +811,309 @@ func (s *RecipeService) GetRecipeByID(ctx context.Context, recipeID string) (*mo
 	}, nil
 }
 
-func (s *RecipeService) UpdateRecipe(ctx context.Context, recipeID string, req models.CreateRecipeRequest, userID string) error {
-	// First verify the recipe belongs to the user
-	recipe, err := s.GetRecipeByID(ctx, recipeID)
+func (s *RecipeService) UpdateRecipe(ctx context.Context, recipeID string, req models.CreateRecipeRequest, userID string) (*models.Recipe, error) {
+	// Get token from context
+	token, ok := ctx.Value("token").(string)
+	if !ok {
+		return nil, errors.New("no token found in context")
+	}
+
+	fmt.Println("request", req)
+
+	// Use client with token
+	client := s.withToken(token)
+
+	// First, check if the recipe exists and belongs to the user
+	var query struct {
+		Recipes []struct {
+			ID     string `graphql:"id"`
+			UserID string `graphql:"user_id"`
+		} `graphql:"recipes(where: {id: {_eq: $recipe_id}})"`
+	}
+	queryVars := map[string]interface{}{
+		"recipe_id": recipeID,
+	}
+
+	err := client.Query(ctx, &query, queryVars)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to fetch recipe: %v", err)
 	}
 
-	if recipe.UserID != userID {
-		return errors.New("unauthorized: recipe does not belong to user")
+	if len(query.Recipes) == 0 {
+		return nil, errors.New("recipe not found")
 	}
 
+	if query.Recipes[0].UserID != userID {
+		return nil, errors.New("unauthorized: recipe belongs to another user")
+	}
+
+	// Upload new featured image if provided
+	var featuredImageURL string
+	if req.FeaturedImage != "" {
+		uploadedURL, err := s.uploadImage(ctx, req.FeaturedImage)
+		if err != nil {
+			return nil, fmt.Errorf("failed to upload featured image: %v", err)
+		}
+		featuredImageURL = uploadedURL
+	}
+
+	// Update recipe mutation
 	var mutation struct {
-		UpdateRecipe struct {
-			AffectedRows int
-		} `graphql:"update_recipes_by_pk(pk_columns: {id: $id}, _set: $updates)"`
+		UpdateRecipes struct {
+			AffectedRows int `graphql:"affected_rows"`
+			Returning    []struct {
+				ID              string  `graphql:"id"`
+				Title           string  `graphql:"title"`
+				Description     string  `graphql:"description"`
+				Difficulty      string  `graphql:"difficulty"`
+				Servings        int     `graphql:"servings"`
+				PreparationTime int     `graphql:"preparation_time"`
+				UserID          string  `graphql:"user_id"`
+				FeaturedImage   string  `graphql:"featured_image"`
+				Price           float64 `graphql:"price"`
+			} `graphql:"returning"`
+		} `graphql:"update_recipes(where: {id: {_eq: $recipe_id}}, _set: {title: $title, description: $description, difficulty: $difficulty, servings: $servings, preparation_time: $preparation_time, featured_image: $featured_image, price: $price})"`
 	}
 
-	variables := map[string]interface{}{
-		"id": recipeID,
-		"updates": map[string]interface{}{
-			"title":            req.Title,
-			"description":      req.Description,
-			"preparation_time": req.PreparationTime,
-			"featured_image":   req.FeaturedImage,
-			"price":            req.Price,
-		},
+	mutationVars := map[string]interface{}{
+		"recipe_id":        recipeID,
+		"title":            req.Title,
+		"description":      req.Description,
+		"preparation_time": req.PreparationTime,
+		"difficulty":       req.Difficulty,
+		"servings":         req.Servings,
+		"featured_image":   featuredImageURL,
+		"price":            req.Price,
 	}
 
-	return s.client.Mutate(ctx, &mutation, variables)
+	err = client.Mutate(ctx, &mutation, mutationVars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update recipe: %v", err)
+	}
+
+	if mutation.UpdateRecipes.AffectedRows == 0 {
+		return nil, fmt.Errorf("no recipe was updated")
+	}
+
+	updatedRecipe := mutation.UpdateRecipes.Returning[0]
+
+	// Delete existing steps and create new ones
+	if len(req.Steps) > 0 {
+		// First delete existing steps
+		var deleteStepsMutation struct {
+			DeleteRecipeSteps struct {
+				AffectedRows int `graphql:"affected_rows"`
+			} `graphql:"delete_recipe_steps(where: {recipe_id: {_eq: $recipe_id}})"`
+		}
+
+		deleteVars := map[string]interface{}{
+			"recipe_id": recipeID,
+		}
+
+		err = client.Mutate(ctx, &deleteStepsMutation, deleteVars)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete existing steps: %v", err)
+		}
+
+		// Insert new steps
+		var stepsMutation struct {
+			InsertRecipeSteps struct {
+				AffectedRows int `graphql:"affected_rows"`
+			} `graphql:"insert_recipe_steps(objects: [{recipe_id: $recipe_id, step_number: $step_number, description: $description, image_url: $image_url}])"`
+		}
+
+		for _, step := range req.Steps {
+			var stepImageURL *string
+			if step.ImageBase64 != nil {
+				uploadedURL, err := s.uploadImage(ctx, *step.ImageBase64)
+				if err != nil {
+					return nil, fmt.Errorf("failed to upload step image: %v", err)
+				}
+				stepImageURL = &uploadedURL
+			}
+
+			stepVars := map[string]interface{}{
+				"recipe_id":   recipeID,
+				"step_number": step.StepNumber,
+				"description": step.Description,
+				"image_url":   stepImageURL,
+			}
+
+			err = client.Mutate(ctx, &stepsMutation, stepVars)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create recipe step: %v", err)
+			}
+		}
+	}
+
+	// Update ingredients
+	if len(req.Ingredients) > 0 {
+		// Delete existing ingredients
+		var deleteIngredientsMutation struct {
+			DeleteRecipeIngredients struct {
+				AffectedRows int `graphql:"affected_rows"`
+			} `graphql:"delete_recipe_ingredients(where: {recipe_id: {_eq: $recipe_id}})"`
+		}
+
+		deleteVars := map[string]interface{}{
+			"recipe_id": recipeID,
+		}
+
+		err = client.Mutate(ctx, &deleteIngredientsMutation, deleteVars)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete existing ingredients: %v", err)
+		}
+
+		// Insert new ingredients
+		for _, ingredient := range req.Ingredients {
+			// Ensure ingredient exists
+			var ingredientMutation struct {
+				InsertIngredients struct {
+					AffectedRows int `graphql:"affected_rows"`
+				} `graphql:"insert_ingredients(objects: [{id: $id, name: $name}], on_conflict: {constraint: ingredients_pkey, update_columns: []})"`
+			}
+
+			ingredientVars := map[string]interface{}{
+				"id":   graphql.String(ingredient.IngredientID.String()),
+				"name": graphql.String(ingredient.Name),
+			}
+
+			err = client.Mutate(ctx, &ingredientMutation, ingredientVars)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create/update ingredient: %v", err)
+			}
+
+			// Create recipe ingredient relation
+			var recipeIngredientMutation struct {
+				InsertRecipeIngredients struct {
+					AffectedRows int `graphql:"affected_rows"`
+				} `graphql:"insert_recipe_ingredients(objects: [{recipe_id: $recipe_id, ingredient_id: $ingredient_id, quantity: $quantity, unit: $unit}])"`
+			}
+
+			recipeIngredientVars := map[string]interface{}{
+				"recipe_id":     recipeID,
+				"ingredient_id": graphql.String(ingredient.IngredientID.String()),
+				"quantity":      ingredient.Quantity,
+				"unit":          ingredient.Unit,
+			}
+
+			err = client.Mutate(ctx, &recipeIngredientMutation, recipeIngredientVars)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create recipe ingredient: %v", err)
+			}
+		}
+	}
+
+	// Update categories
+	if len(req.Categories) > 0 {
+		// Delete existing categories
+		var deleteCategoriesMutation struct {
+			DeleteRecipeCategories struct {
+				AffectedRows int `graphql:"affected_rows"`
+			} `graphql:"delete_recipe_categories(where: {recipe_id: {_eq: $recipe_id}})"`
+		}
+
+		deleteVars := map[string]interface{}{
+			"recipe_id": recipeID,
+		}
+
+		err = client.Mutate(ctx, &deleteCategoriesMutation, deleteVars)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete existing categories: %v", err)
+		}
+
+		// Insert new categories
+		for _, category := range req.Categories {
+			// Ensure category exists
+			var categoryMutation struct {
+				InsertCategories struct {
+					AffectedRows int `graphql:"affected_rows"`
+				} `graphql:"insert_categories(objects: [{id: $id, name: $name}], on_conflict: {constraint: categories_pkey, update_columns: []})"`
+			}
+
+			categoryVars := map[string]interface{}{
+				"id":   graphql.String(category.CategoryID.String()),
+				"name": graphql.String(category.Name),
+			}
+
+			err = client.Mutate(ctx, &categoryMutation, categoryVars)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create/update category: %v", err)
+			}
+
+			// Create recipe category relation
+			var recipeCategoryMutation struct {
+				InsertRecipeCategories struct {
+					AffectedRows int `graphql:"affected_rows"`
+				} `graphql:"insert_recipe_categories(objects: [{recipe_id: $recipe_id, category_id: $category_id}])"`
+			}
+
+			recipeCategoryVars := map[string]interface{}{
+				"recipe_id":   recipeID,
+				"category_id": graphql.String(category.CategoryID.String()),
+			}
+
+			err = client.Mutate(ctx, &recipeCategoryMutation, recipeCategoryVars)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create recipe category: %v", err)
+			}
+		}
+	}
+
+	// Update images
+	if len(req.Images) > 0 {
+		// Delete existing images
+		var deleteImagesMutation struct {
+			DeleteRecipeImages struct {
+				AffectedRows int `graphql:"affected_rows"`
+			} `graphql:"delete_recipe_images(where: {recipe_id: {_eq: $recipe_id}})"`
+		}
+
+		deleteVars := map[string]interface{}{
+			"recipe_id": recipeID,
+		}
+
+		err = client.Mutate(ctx, &deleteImagesMutation, deleteVars)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete existing images: %v", err)
+		}
+
+		// Insert new images
+		var imagesMutation struct {
+			InsertRecipeImages struct {
+				AffectedRows int `graphql:"affected_rows"`
+			} `graphql:"insert_recipe_images(objects: [{recipe_id: $recipe_id, image_url: $image_url, is_featured: $is_featured}])"`
+		}
+
+		for _, image := range req.Images {
+			// Upload image and get URL
+			imageURL, err := s.uploadImage(ctx, image.ImageBase64)
+			if err != nil {
+				return nil, fmt.Errorf("failed to upload recipe image: %v", err)
+			}
+
+			imageVars := map[string]interface{}{
+				"recipe_id":   recipeID,
+				"image_url":   imageURL,
+				"is_featured": image.IsFeatured,
+			}
+
+			err = client.Mutate(ctx, &imagesMutation, imageVars)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create recipe image: %v", err)
+			}
+		}
+	}
+
+	return &models.Recipe{
+		ID:              updatedRecipe.ID,
+		Title:           updatedRecipe.Title,
+		Description:     &updatedRecipe.Description,
+		PreparationTime: updatedRecipe.PreparationTime,
+		UserID:          updatedRecipe.UserID,
+		FeaturedImage:   updatedRecipe.FeaturedImage,
+		Price:           updatedRecipe.Price,
+	}, nil
 }
 
 func (s *RecipeService) DeleteRecipe(ctx context.Context, recipeID string, userID string) (*models.Recipe, error) {
