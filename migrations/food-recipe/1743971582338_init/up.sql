@@ -144,28 +144,3 @@ RETURNS INTEGER AS $$
     FROM recipe_likes
     WHERE recipe_id = recipe_row.id;
 $$ LANGUAGE SQL STABLE;
-
--- Create trigger for updating timestamps
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Add triggers for tables that need updated_at
-CREATE TRIGGER update_users_updated_at
-    BEFORE UPDATE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_recipes_updated_at
-    BEFORE UPDATE ON recipes
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_recipe_comments_updated_at
-    BEFORE UPDATE ON recipe_comments
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column(); 

@@ -19,28 +19,9 @@ type AuthService struct {
 }
 
 func NewAuthService(hasuraEndpoint string) *AuthService {
-	// Create HTTP client with admin secret header
-	httpClient := &http.Client{
-		Transport: &headerTransport{
-			headers: map[string]string{
-				"X-Hasura-Admin-Secret": os.Getenv("HASURA_ADMIN_SECRET"),
-			},
-		},
-	}
-
+	httpClient := &http.Client{}
 	client := graphql.NewClient(hasuraEndpoint, httpClient)
 	return &AuthService{client: client}
-}
-
-type headerTransport struct {
-	headers map[string]string
-}
-
-func (t *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	for key, value := range t.headers {
-		req.Header.Set(key, value)
-	}
-	return http.DefaultTransport.RoundTrip(req)
 }
 
 func (s *AuthService) Register(ctx context.Context, req models.RegisterRequest) (*models.AuthResponse, error) {
@@ -78,7 +59,7 @@ func (s *AuthService) Register(ctx context.Context, req models.RegisterRequest) 
 	}
 
 	// Generate JWT token
-	token, err := generateJWT(userID.String())
+	token, err := GenerateToken(userID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +112,7 @@ func (s *AuthService) Login(ctx context.Context, req models.LoginRequest) (*mode
 	}
 
 	// Generate JWT token
-	token, err := generateJWT(userID.String())
+	token, err := GenerateToken(userID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -145,24 +126,44 @@ func (s *AuthService) Login(ctx context.Context, req models.LoginRequest) (*mode
 	}, nil
 }
 
-func generateJWT(userID string) (string, error) {
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		return "", errors.New("JWT_SECRET not set")
+// type HasuraClaims struct {
+// 	UserID string   `json:"x-hasura-user-id"`
+// 	Role   string   `json:"x-hasura-default-role"`
+// 	Roles  []string `json:"x-hasura-allowed-roles"`
+// }
+
+type CustomClaims struct {
+	UserID       string                 `json:"user_id"`
+	HasuraClaims map[string]interface{} `json:"https://hasura.io/jwt/claims"`
+	jwt.RegisteredClaims
+}
+
+func GenerateToken(userID string) (string, error) {
+	// Create Hasura-specific claims
+	hasuraClaims := map[string]interface{}{
+		"x-hasura-allowed-roles": []string{"user"},
+		"x-hasura-default-role":  "user",
+		"x-hasura-user-id":       userID,
 	}
 
-	claims := jwt.MapClaims{
-		"sub": userID,
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
-		"iat": time.Now().Unix(),
-		"iss": "food-recipe-app",
-		"https://hasura.io/jwt/claims": map[string]interface{}{
-			"x-hasura-default-role":  "user",
-			"x-hasura-allowed-roles": []string{"user"},
-			"x-hasura-user-id":       userID,
+	claims := CustomClaims{
+		UserID:       userID,
+		HasuraClaims: hasuraClaims,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(secret))
+
+	// Use the same secret key as configured in Hasura
+	secretKey := []byte(os.Getenv("JWT_SECRET"))
+
+	tokenString, err := token.SignedString(secretKey)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
 }
