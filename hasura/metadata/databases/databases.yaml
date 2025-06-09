@@ -1,0 +1,8 @@
+- name: food-recipe
+  kind: postgres
+  configuration:
+    connection_info:
+      database_url: postgres://postgres:123123@postgres:5432/postgres
+      isolation_level: read-committed
+      use_prepared_statements: false
+  tables: "!include food-recipe/tables/tables.yaml"

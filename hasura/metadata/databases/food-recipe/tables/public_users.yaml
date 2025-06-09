@@ -1,0 +1,124 @@
+table:
+  name: users
+  schema: public
+array_relationships:
+  - name: recipe_bookmarks
+    using:
+      foreign_key_constraint_on:
+        column: user_id
+        table:
+          name: recipe_bookmarks
+          schema: public
+  - name: recipe_comments
+    using:
+      foreign_key_constraint_on:
+        column: user_id
+        table:
+          name: recipe_comments
+          schema: public
+  - name: recipe_likes
+    using:
+      foreign_key_constraint_on:
+        column: user_id
+        table:
+          name: recipe_likes
+          schema: public
+  - name: recipe_purchases
+    using:
+      foreign_key_constraint_on:
+        column: user_id
+        table:
+          name: recipe_purchases
+          schema: public
+  - name: recipe_ratings
+    using:
+      foreign_key_constraint_on:
+        column: user_id
+        table:
+          name: recipe_ratings
+          schema: public
+  - name: recipes
+    using:
+      foreign_key_constraint_on:
+        column: user_id
+        table:
+          name: recipes
+          schema: public
+insert_permissions:
+  - role: anonymous
+    permission:
+      check: {}
+      columns:
+        - email
+        - full_name
+        - password_hash
+        - username
+        - bio
+        - id
+        - profile_picture
+        - created_at
+        - updated_at
+    comment: ""
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - email
+        - full_name
+        - password_hash
+        - username
+        - bio
+        - id
+        - profile_picture
+        - created_at
+        - updated_at
+    comment: ""
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - email
+        - full_name
+        - password_hash
+        - username
+        - bio
+        - id
+        - profile_picture
+        - created_at
+        - updated_at
+      filter: {}
+    comment: ""
+  - role: user
+    permission:
+      columns:
+        - bio
+        - email
+        - full_name
+        - id
+        - profile_picture
+        - username
+      filter: {}
+    comment: ""
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - email
+        - full_name
+        - password_hash
+        - username
+        - bio
+        - id
+        - profile_picture
+        - created_at
+        - updated_at
+      filter:
+        id:
+          _eq: X-Hasura-User-Id
+      check: null
+    comment: ""
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+    comment: ""

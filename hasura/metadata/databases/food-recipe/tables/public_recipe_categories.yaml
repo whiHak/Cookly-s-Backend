@@ -1,0 +1,61 @@
+table:
+  name: recipe_categories
+  schema: public
+object_relationships:
+  - name: category
+    using:
+      foreign_key_constraint_on: category_id
+  - name: recipe
+    using:
+      foreign_key_constraint_on: recipe_id
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - category_id
+        - id
+        - recipe_id
+        - created_at
+    comment: ""
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - category_id
+        - id
+        - recipe_id
+        - created_at
+      filter: {}
+    comment: ""
+  - role: user
+    permission:
+      columns:
+        - category_id
+        - id
+        - recipe_id
+        - created_at
+      filter: {}
+    comment: ""
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - category_id
+      filter:
+        recipe:
+          user_id:
+            _eq: X-Hasura-User-Id
+      check:
+        recipe:
+          user_id:
+            _eq: X-Hasura-User-Id
+    comment: ""
+delete_permissions:
+  - role: user
+    permission:
+      filter:
+        recipe:
+          user_id:
+            _eq: X-Hasura-User-Id
+    comment: ""

@@ -1,0 +1,66 @@
+table:
+  name: recipe_steps
+  schema: public
+object_relationships:
+  - name: recipe
+    using:
+      foreign_key_constraint_on: recipe_id
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - step_number
+        - description
+        - id
+        - image_url
+        - recipe_id
+        - created_at
+    comment: ""
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - created_at
+        - description
+        - id
+        - image_url
+        - recipe_id
+        - step_number
+      filter: {}
+    comment: ""
+  - role: user
+    permission:
+      columns:
+        - step_number
+        - description
+        - id
+        - image_url
+        - recipe_id
+        - created_at
+      filter: {}
+    comment: ""
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - description
+        - image_url
+        - step_number
+      filter:
+        recipe:
+          user_id:
+            _eq: X-Hasura-User-Id
+      check:
+        recipe:
+          user_id:
+            _eq: X-Hasura-User-Id
+    comment: ""
+delete_permissions:
+  - role: user
+    permission:
+      filter:
+        recipe:
+          user_id:
+            _eq: X-Hasura-User-Id
+    comment: ""

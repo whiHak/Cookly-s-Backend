@@ -1,0 +1,52 @@
+table:
+  name: ingredients
+  schema: public
+array_relationships:
+  - name: recipe_ingredients
+    using:
+      foreign_key_constraint_on:
+        column: ingredient_id
+        table:
+          name: recipe_ingredients
+          schema: public
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - name
+        - created_at
+    comment: ""
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - name
+        - created_at
+      filter: {}
+    comment: ""
+  - role: user
+    permission:
+      columns:
+        - id
+        - name
+        - created_at
+      filter: {}
+    comment: ""
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - id
+        - name
+        - created_at
+      filter: {}
+      check: null
+    comment: ""
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+    comment: ""

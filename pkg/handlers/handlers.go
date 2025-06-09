@@ -21,7 +21,6 @@ type Handler struct {
 func NewHandler(hasuraEndpoint string) *Handler {
 	return &Handler{
 		authService: auth.NewAuthService(hasuraEndpoint),
-		// recipeService: recipe.NewRecipeService(hasuraEndpoint),
 	}
 }
 

@@ -1,0 +1,40 @@
+type Mutation {
+  login(
+    email: String!
+    password: String!
+  ): LoginResponse
+}
+
+type Mutation {
+  register(
+    full_name: String!
+    email: String!
+    password: String!
+    username: String!
+  ): AuthResponse
+}
+
+input RegisterInput {
+  username: String!
+  email: String!
+  password: String!
+  full_name: String!
+}
+
+type AuthResponse {
+  token: String!
+  user: AuthUser!
+}
+
+type AuthUser {
+  id: String!
+  username: String!
+  full_name: String!
+  email: String!
+}
+
+type LoginResponse {
+  token: String!
+  user: AuthUser!
+}
+

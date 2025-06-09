@@ -1,0 +1,20 @@
+table:
+  name: recipe_purchases
+  schema: public
+object_relationships:
+  - name: user
+    using:
+      foreign_key_constraint_on: user_id
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - status
+        - transaction_id
+        - amount
+        - id
+        - recipe_id
+        - user_id
+        - created_at
+    comment: ""

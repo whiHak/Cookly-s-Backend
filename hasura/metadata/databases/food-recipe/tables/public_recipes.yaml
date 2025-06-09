@@ -1,0 +1,144 @@
+table:
+  name: recipes
+  schema: public
+object_relationships:
+  - name: user
+    using:
+      foreign_key_constraint_on: user_id
+array_relationships:
+  - name: recipe_bookmarks
+    using:
+      foreign_key_constraint_on:
+        column: recipe_id
+        table:
+          name: recipe_bookmarks
+          schema: public
+  - name: recipe_categories
+    using:
+      foreign_key_constraint_on:
+        column: recipe_id
+        table:
+          name: recipe_categories
+          schema: public
+  - name: recipe_comments
+    using:
+      foreign_key_constraint_on:
+        column: recipe_id
+        table:
+          name: recipe_comments
+          schema: public
+  - name: recipe_images
+    using:
+      foreign_key_constraint_on:
+        column: recipe_id
+        table:
+          name: recipe_images
+          schema: public
+  - name: recipe_ingredients
+    using:
+      foreign_key_constraint_on:
+        column: recipe_id
+        table:
+          name: recipe_ingredients
+          schema: public
+  - name: recipe_likes
+    using:
+      manual_configuration:
+        column_mapping:
+          id: recipe_id
+        insertion_order: null
+        remote_table:
+          name: recipe_likes
+          schema: public
+  - name: recipe_ratings
+    using:
+      foreign_key_constraint_on:
+        column: recipe_id
+        table:
+          name: recipe_ratings
+          schema: public
+  - name: recipe_steps
+    using:
+      foreign_key_constraint_on:
+        column: recipe_id
+        table:
+          name: recipe_steps
+          schema: public
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - title
+        - preparation_time
+        - servings
+        - price
+        - description
+        - difficulty
+        - featured_image
+        - id
+        - user_id
+        - created_at
+        - updated_at
+    comment: ""
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - created_at
+        - description
+        - difficulty
+        - featured_image
+        - id
+        - preparation_time
+        - price
+        - servings
+        - title
+        - updated_at
+        - user_id
+      filter: {}
+      allow_aggregations: true
+    comment: ""
+  - role: user
+    permission:
+      columns:
+        - title
+        - preparation_time
+        - servings
+        - price
+        - description
+        - difficulty
+        - featured_image
+        - id
+        - user_id
+        - created_at
+        - updated_at
+      filter: {}
+      allow_aggregations: true
+    comment: ""
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - description
+        - difficulty
+        - featured_image
+        - preparation_time
+        - price
+        - servings
+        - title
+        - updated_at
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+    comment: ""
+delete_permissions:
+  - role: user
+    permission:
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+    comment: ""
