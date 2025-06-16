@@ -20,9 +20,6 @@ func main() {
 
 	// Get Hasura endpoint from environment
 	hasuraEndpoint := os.Getenv("HASURA_ENDPOINT")
-	if hasuraEndpoint == "" {
-		hasuraEndpoint = "http://localhost:8080/v1/graphql"
-	}
 
 	// Create a new Fiber app
 	app := fiber.New(fiber.Config{
