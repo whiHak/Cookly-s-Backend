@@ -78,10 +78,13 @@ select_permissions:
     permission:
       columns:
         - bio
+        - created_at
         - email
         - full_name
         - id
+        - password_hash
         - profile_picture
+        - updated_at
         - username
       filter: {}
     comment: ""
@@ -89,10 +92,13 @@ select_permissions:
     permission:
       columns:
         - bio
+        - created_at
         - email
         - full_name
         - id
+        - password_hash
         - profile_picture
+        - updated_at
         - username
       filter: {}
     comment: ""
