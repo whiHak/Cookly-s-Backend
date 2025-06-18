@@ -50,6 +50,13 @@ array_relationships:
         remote_table:
           name: recipe_likes
           schema: public
+  - name: recipe_purchases
+    using:
+      foreign_key_constraint_on:
+        column: recipe_id
+        table:
+          name: recipe_purchases
+          schema: public
   - name: recipe_ratings
     using:
       foreign_key_constraint_on:
@@ -68,6 +75,8 @@ insert_permissions:
   - role: user
     permission:
       check: {}
+      set:
+        user_id: x-hasura-User-Id
       columns:
         - title
         - preparation_time
@@ -94,7 +103,6 @@ select_permissions:
         - price
         - servings
         - title
-        - updated_at
         - user_id
       filter: {}
       allow_aggregations: true

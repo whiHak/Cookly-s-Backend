@@ -21,6 +21,11 @@ input RegisterInput {
   full_name: String!
 }
 
+input SampleInput {
+  username: String!
+  password: String!
+}
+
 type AuthResponse {
   token: String!
   user: AuthUser!
@@ -36,5 +41,9 @@ type AuthUser {
 type LoginResponse {
   token: String!
   user: AuthUser!
+}
+
+type SampleOutput {
+  accessToken: String!
 }
 

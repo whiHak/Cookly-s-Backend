@@ -15,8 +15,10 @@ custom_types:
   enums: []
   input_objects:
     - name: RegisterInput
+    - name: SampleInput
   objects:
     - name: AuthResponse
     - name: AuthUser
     - name: LoginResponse
+    - name: SampleOutput
   scalars: []

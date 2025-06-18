@@ -1,6 +1,14 @@
 table:
   name: categories
   schema: public
+array_relationships:
+  - name: recipe_categories
+    using:
+      foreign_key_constraint_on:
+        column: category_id
+        table:
+          name: recipe_categories
+          schema: public
 insert_permissions:
   - role: user
     permission:

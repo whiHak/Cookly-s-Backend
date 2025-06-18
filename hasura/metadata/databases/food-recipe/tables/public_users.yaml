@@ -62,6 +62,8 @@ insert_permissions:
   - role: user
     permission:
       check: {}
+      set:
+        id: x-hasura-User-Id
       columns:
         - email
         - full_name
@@ -77,15 +79,12 @@ select_permissions:
   - role: anonymous
     permission:
       columns:
+        - bio
         - email
         - full_name
-        - password_hash
-        - username
-        - bio
         - id
         - profile_picture
-        - created_at
-        - updated_at
+        - username
       filter: {}
     comment: ""
   - role: user
@@ -120,5 +119,7 @@ update_permissions:
 delete_permissions:
   - role: user
     permission:
-      filter: {}
+      filter:
+        id:
+          _eq: X-Hasura-User-Id
     comment: ""
