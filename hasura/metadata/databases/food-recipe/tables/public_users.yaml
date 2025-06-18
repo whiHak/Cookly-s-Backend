@@ -62,8 +62,6 @@ insert_permissions:
   - role: user
     permission:
       check: {}
-      set:
-        id: x-hasura-User-Id
       columns:
         - email
         - full_name
