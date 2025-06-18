@@ -25,6 +25,16 @@ func NewHandler(hasuraEndpoint string) *Handler {
 }
 
 func (h *Handler) Register(c *fiber.Ctx) error {
+	// Validate Action Secret
+	expectedSecret := os.Getenv("ACTION_SECRET")
+	incomingSecret := c.Get("x-hasura-action-secret")
+	fmt.Println("expectedSecret:", expectedSecret)
+	fmt.Println("incomingSecret:", incomingSecret)
+	if incomingSecret != expectedSecret {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Unauthorized: Invalid action secret",
+		})
+	}
 	var raw map[string]interface{}
 	if err := c.BodyParser(&raw); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -32,7 +42,6 @@ func (h *Handler) Register(c *fiber.Ctx) error {
 		})
 	}
 	fmt.Println("raw.......", raw)
-
 	input, ok := raw["input"].(map[string]interface{})
 	if !ok {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -40,6 +49,10 @@ func (h *Handler) Register(c *fiber.Ctx) error {
 		})
 	}
 	fmt.Println("input.......", input)
+	// verify action secret before proceeding
+	// actionSecret := os.Getenv("ACTION_SECRET")
+	// incomingSecret, ok := input["x-hasura-action-secret"].(string)
+
 	var req models.RegisterRequest
 	inputBytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(inputBytes, &req); err != nil {
@@ -81,6 +94,18 @@ func (h *Handler) Register(c *fiber.Ctx) error {
 }
 
 func (h *Handler) Login(c *fiber.Ctx) error {
+	// Validate Action Secret
+	expectedSecret := os.Getenv("ACTION_SECRET")
+	incomingSecret := c.Get("x-hasura-action-secret")
+	fmt.Println("expectedSecret:", expectedSecret)
+	fmt.Println("incomingSecret:", incomingSecret)
+	if incomingSecret != expectedSecret {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Unauthorized: Invalid action secret",
+		})
+	}
+
+	// Parse incoming raw JSON body
 	var raw map[string]interface{}
 	if err := c.BodyParser(&raw); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -88,6 +113,7 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 		})
 	}
 
+	//  Extract the "input" field from Hasura Action payload
 	input, ok := raw["input"].(map[string]interface{})
 	if !ok {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -95,7 +121,7 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	// Now parse input into your LoginRequest struct
+	//  Unmarshal into your LoginRequest model
 	var req models.LoginRequest
 	inputBytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(inputBytes, &req); err != nil {
@@ -104,26 +130,27 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	// Validate request
+	//  Basic validation
 	if req.Email == "" || req.Password == "" {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"message": "Email and password are required",
 		})
 	}
 
+	// 🚀 Call your actual login service
 	resp, err := h.authService.Login(c.Context(), req)
 	if err != nil {
 		if err.Error() == "user not found" || err.Error() == "invalid password" {
-			return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"message": "Invalid credentials",
 			})
 		}
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": err.Error(),
 		})
 	}
 
-	// Wrap response to match frontend expectation
+	// 🎉 Return response
 	return c.JSON(fiber.Map{
 		"token": resp.Token,
 		"user": fiber.Map{
