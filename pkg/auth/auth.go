@@ -126,12 +126,6 @@ func (s *AuthService) Login(ctx context.Context, req models.LoginRequest) (*mode
 	}, nil
 }
 
-// type HasuraClaims struct {
-// 	UserID string   `json:"x-hasura-user-id"`
-// 	Role   string   `json:"x-hasura-default-role"`
-// 	Roles  []string `json:"x-hasura-allowed-roles"`
-// }
-
 type CustomClaims struct {
 	UserID       string                 `json:"user_id"`
 	HasuraClaims map[string]interface{} `json:"https://hasura.io/jwt/claims"`
@@ -157,7 +151,6 @@ func GenerateToken(userID string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	// Use the same secret key as configured in Hasura
 	secretKey := []byte(os.Getenv("JWT_SECRET"))
 
 	tokenString, err := token.SignedString(secretKey)
